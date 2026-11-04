@@ -6,10 +6,10 @@ from database import inicializar_bd
 inicializar_bd()
 
 st.set_page_config(page_title="Portal de Compradores", layout="wide")
-st.title("🛒 Panel de Comprador - Presubasta y Pujas")
+st.title("Panel de Comprador - Presubasta y Pujas")
 
 # Autenticación de Comprador en barra lateral
-st.sidebar.header("🔐 Acceso Comprador")
+st.sidebar.header("Acceso Comprador")
 modo = st.sidebar.radio("Acción:", ["Iniciar Sesión", "Registrarse"], key="auth_c")
 user = st.sidebar.text_input("Empresa Compradora:", key="uc")
 pwd = st.sidebar.text_input("Contraseña:", type="password", key="pc")
@@ -46,7 +46,7 @@ if "comprador_activo" in st.session_state and st.session_state.comprador_activo:
         cursor.execute("SELECT id, producto, categoria, cantidad_kg, precio_base, vendedor FROM lotes")
         lotes = cursor.fetchall()
         
-        st.markdown("### 📦 Lotes Disponibles para Pujar")
+        st.markdown("### Lotes Disponibles para Pujar")
         lote_opciones = {f"Lote #{l[0]} - {l[1]} ({l[2]}) | Base: ${l[4]}": l[0] for l in lotes}
         
         if lote_opciones:
@@ -70,7 +70,7 @@ if "comprador_activo" in st.session_state and st.session_state.comprador_activo:
                 
                 if comprador in top3_actual:
                     st.balloons()
-                    st.warning("🎉 **¡Felicidades! Estás en el TOP 3 de este lote.**")
+                    st.warning("**¡Felicidades! Estás en el TOP 3 de este lote.**")
                     st.session_state.ultima_oferta_comprador = {
                         "lote_id": lote_id,
                         "producto": info_lote[0],
@@ -98,12 +98,12 @@ if "comprador_activo" in st.session_state and st.session_state.comprador_activo:
                                 VALUES (?, ?, ?, ?, ?, ?, NULL)
                             """, (uo["vendedor"], comprador, uo["producto"], msg, logistica, imagen_subida.name if imagen_subida else None))
                             conn.commit()
-                            st.success("📩 ¡Mensaje enviado con éxito al vendedor!")
+                            st.success("¡Mensaje enviado con éxito al vendedor!")
         else:
             st.info("No hay lotes disponibles para pujar.")
             
     elif accion == "Ver mi Historial y Mensajes":
-        st.markdown(f"### 📜 Historial de Pujas de: {comprador}")
+        st.markdown(f"### Historial de Pujas de: {comprador}")
         cursor.execute("SELECT l.producto, p.oferta FROM pujas p JOIN lotes l ON p.lote_id = l.id WHERE p.comprador = ?", (comprador,))
         mis_pujas = cursor.fetchall()
         if mis_pujas:
@@ -117,11 +117,11 @@ if "comprador_activo" in st.session_state and st.session_state.comprador_activo:
         mensajes_mios = cursor.fetchall()
         if mensajes_mios:
             for m in mensajes_mios:
-                st.write(f"📤 **Para {m[3]} ({m[0]}):** {m[1]}")
+                st.write(f"**Para {m[3]} ({m[0]}):** {m[1]}")
                 if m[2]:
-                    st.success(f"📥 **Respuesta del Vendedor:** {m[2]}")
+                    st.success(f"**Respuesta del Vendedor:** {m[2]}")
                 else:
-                    st.info("⏳ Esperando respuesta del vendedor...")
+                    st.info("Esperando respuesta del vendedor...")
                 st.markdown("---")
         else:
             st.info("No has enviado mensajes directos todavía.")
