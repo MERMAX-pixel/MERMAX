@@ -4,7 +4,7 @@ def inicializar_bd():
     conn = sqlite3.connect("mermax.db")
     cursor = conn.cursor()
     
-    # Tabla de Usuarios (Compradores y Vendedores)
+    # Tabla de Usuarios (Compradores y Vendedores con contraseña)
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS usuarios (
             nombre TEXT PRIMARY KEY,
@@ -13,7 +13,7 @@ def inicializar_bd():
         )
     """)
     
-    # Tabla de Lotes
+    # Tabla de Lotes publicados por vendedores (con categorías)
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS lotes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -26,7 +26,7 @@ def inicializar_bd():
         )
     """)
     
-    # Tabla de Pujas / Ofertas
+    # Tabla de Pujas / Ofertas de los compradores
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS pujas (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -37,7 +37,7 @@ def inicializar_bd():
         )
     """)
     
-    # Tabla de Mensajes y Negociación
+    # Tabla de Mensajes directos (con soporte de imagen, logística y respuesta)
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS mensajes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -52,25 +52,5 @@ def inicializar_bd():
     """)
     
     conn.commit()
-    conn.close()
-
-# Funciones de apoyo para insertar y consultar datos fácilmente
-def registrar_usuario(nombre, rol, password):
-    conn = sqlite3.connect("mermax.db")
-    cursor = conn.cursor()
-    try:
-        cursor.execute("INSERT INTO usuarios (nombre, rol, password) VALUES (?, ?, ?)", (nombre, rol, password))
-        conn.commit()
-        exito = True
-    except sqlite3.IntegrityError:
-        exito = False
-    conn.close()
-    return exito
-
-def verificar_usuario(nombre, password):
-    conn = sqlite3.connect("mermax.db")
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM usuarios WHERE nombre = ? AND password = ?", (nombre, password))
-    user = cursor.fetchone()
     conn.close()
     return user
