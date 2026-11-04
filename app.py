@@ -7,13 +7,13 @@ inicializar_bd()
 
 st.set_page_config(page_title="Plataforma Mermax - Inicio", layout="wide")
 
-st.title("🌱 Plataforma Integral de Presubasta de Mermas (FoodTech)")
+st.title("Plataforma Integral de Presubasta de Mermas (FoodTech)")
 st.markdown("Optimiza el rescate de alimentos, previene pérdidas y conecta dinámicamente a compradores con vendedores.")
 
-st.info("ℹ️ Utiliza el menú lateral izquierdo para navegar entre el **Panel de Comprador** y el **Panel de Vendedor**.")
+st.info("Utiliza el menú lateral izquierdo para navegar entre el **Panel de Comprador** y el **Panel de Vendedor**.")
 
 st.markdown("---")
-st.subheader("👁️ Vista Pública de Lotes Activos y Filtros por Categoría")
+st.subheader(" Vista Pública de Lotes Activos y Filtros por Categoría")
 
 conn = sqlite3.connect("mermax.db")
 cursor = conn.cursor()
