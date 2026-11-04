@@ -1,5 +1,9 @@
 import streamlit as st
 import sqlite3
+from database import inicializar_bd
+
+# Inicializar las tablas de la base de datos por si no existen
+inicializar_bd()
 
 st.set_page_config(page_title="Portal de Compradores", layout="wide")
 st.title("🛒 Panel de Comprador - Presubasta y Pujas")
