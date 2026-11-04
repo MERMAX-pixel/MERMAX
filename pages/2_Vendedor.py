@@ -3,9 +3,9 @@ import sqlite3
 import pandas as pd
 
 st.set_page_config(page_title="Portal de Vendedores", layout="wide")
-st.title("📦 Panel de Control de Vendedores")
+st.title("Panel de Control de Vendedores")
 
-st.sidebar.header("🔐 Acceso Vendedor")
+st.sidebar.header("Acceso Vendedor")
 modo_v = st.sidebar.radio("Acción:", ["Iniciar Sesión", "Registrarse"], key="auth_v")
 user_v = st.sidebar.text_input("Empresa Vendedora:", key="uv")
 pwd_v = st.sidebar.text_input("Contraseña:", type="password", key="pv")
@@ -35,7 +35,7 @@ if "vendedor_activo" in st.session_state and st.session_state.vendedor_activo:
     
     # Formulario para publicar nuevo lote
     with st.form("form_lote"):
-        st.markdown("### ➕ Publicar Nuevo Lote")
+        st.markdown("### Publicar Nuevo Lote")
         prod = st.text_input("Nombre del Producto:")
         cat = st.selectbox("Categoría:", ["Frutas y Verduras", "Lácteos", "Panadería", "Carnes y Embutidos", "Otros"])
         cant = st.number_input("Cantidad (kg):", min_value=1.0, value=100.0)
@@ -54,7 +54,7 @@ if "vendedor_activo" in st.session_state and st.session_state.vendedor_activo:
             st.success("¡Lote publicado correctamente!")
 
     st.markdown("---")
-    st.subheader("📈 Historial de Pujas en tus Lotes")
+    st.subheader("Historial de Pujas en tus Lotes")
     conn = sqlite3.connect("mermax.db")
     
     # Obtener lotes de este vendedor
@@ -64,7 +64,7 @@ if "vendedor_activo" in st.session_state and st.session_state.vendedor_activo:
     
     if mis_lotes:
         for ml in mis_lotes:
-            st.markdown(f"#### 📦 Lote #{ml[0]}: {ml[1]} ({ml[2]} kg) - Base: ${ml[3]} USD")
+            st.markdown(f"#### Lote #{ml[0]}: {ml[1]} ({ml[2]} kg) - Base: ${ml[3]} USD")
             query_pujas = f"SELECT comprador, oferta FROM pujas WHERE lote_id = {ml[0]} ORDER BY oferta DESC"
             df_pujas = pd.read_sql(query_pujas, conn)
             
@@ -78,7 +78,7 @@ if "vendedor_activo" in st.session_state and st.session_state.vendedor_activo:
     else:
         st.info("No tienes lotes publicados todavía.")
 
-    st.subheader("📥 Buzón de Mensajes Directos y Respuestas")
+    st.subheader("Buzón de Mensajes Directos y Respuestas")
     cursor.execute("SELECT id, remitente, lote, mensaje, logistica, imagen, respuesta FROM mensajes WHERE vendedor = ?", (vendedor,))
     mensajes_recibidos = cursor.fetchall()
     
@@ -88,7 +88,7 @@ if "vendedor_activo" in st.session_state and st.session_state.vendedor_activo:
             img_info = f" | 🖼️ Imagen: {img}" if img else ""
             
             st.markdown(f"**De:** {remitente} | **Lote:** *{lote_nom}*{img_info}")
-            st.info(f"💬 *\"{texto_msj}\"*\n\n🚚 *Logística:* {logis}")
+            st.info(f"💬 *\"{texto_msj}\"*\n\n*Logística:* {logis}")
             
             if resp_actual:
                 st.success(f"✅ **Tu respuesta enviada:** {resp_actual}")
