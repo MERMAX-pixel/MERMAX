@@ -69,7 +69,17 @@ if "comprador_activo" in st.session_state and st.session_state.comprador_activo:
                 st.write("Aún no hay ofertas registradas en este lote. ¡Sé el primero!")
             
             st.markdown("---")
-            kilos_deseados = st.number_input("¿Cuántos kilos deseas comprar de este lote?:", min_value=1.0, max_value=float(max(1.0, stock_disponible)), value=min(50.0, stock_disponible))
+            
+            # Validación segura corregida para evitar StreamlitValueBelowMinError
+            max_val = float(max(1.0, stock_disponible))
+            val_inicial = float(min(50.0, max_val)) if max_val >= 1.0 else 1.0
+            
+            kilos_deseados = st.number_input(
+                "¿Cuántos kilos deseas comprar de este lote?:", 
+                min_value=1.0, 
+                max_value=max_val, 
+                value=val_inicial
+            )
             nueva_oferta = st.number_input("Tu oferta por unidad ($/kg):", min_value=1.0, value=7.0)
             
             if st.button("Enviar Puja"):
@@ -85,7 +95,6 @@ if "comprador_activo" in st.session_state and st.session_state.comprador_activo:
                 }
                 st.rerun()
             
-            # Opción Sí/No para enviar mensaje al vendedor tras pujar sin reiniciar ni perder la interfaz
             if "puja_realizada" in st.session_state:
                 st.markdown("---")
                 st.success("✅ Tu oferta ha sido procesada correctamente.")
@@ -112,7 +121,7 @@ if "comprador_activo" in st.session_state and st.session_state.comprador_activo:
         else:
             st.info("No hay lotes activos en este momento.")
             
-    elif accion == "Historial y Chat Ilimitado con Vendedores":
+    elif accion == "Mi Historial y Chat Ilimitado con Vendedores":
         st.markdown(f"### 💬 Historial de Chat y Mensajes (Comprador: {comprador})")
         cursor.execute("SELECT id, lote, mensaje, respuesta, vendedor, logistica, imagen, fecha FROM mensajes WHERE remitente = ? ORDER BY fecha DESC", (comprador,))
         historial = cursor.fetchall()
