@@ -7,7 +7,7 @@ from database import inicializar_bd
 inicializar_bd()
 
 st.set_page_config(page_title="Portal de Vendedores", layout="wide")
-st.title("📦 Panel Ejecutivo y Gráficas de Tendencia Temporal")
+st.title("📦 Panel de Vendedor - Control, Gráficas y Chat")
 
 st.sidebar.header("🔐 Acceso Vendedor")
 modo_v = st.sidebar.radio("Acción:", ["Iniciar Sesión", "Registrarse"], key="auth_v")
@@ -60,67 +60,67 @@ if "vendedor_activo" in st.session_state and st.session_state.vendedor_activo:
     st.markdown("---")
     
     # ==========================================================
-    # GRÁFICA DE TENDENCIA DE INGRESOS POR DÍA / TIEMPO
+    # GRÁFICA DE BARRAS: KILOS VENDIDOS VS KILOS FALTANTES
     # ==========================================================
-    st.subheader("📊 Dashboard Financiero y Tendencia Temporal")
+    st.subheader("📊 Gráfica de Control: Kilos Vendidos vs. Kilos Faltantes")
     conn = sqlite3.connect("mermax.db")
-    
-    # Consultar lotes con sus pujas y fechas para graficar evolución por días/meses
-    query_tendencia = f"""
-        SELECT l.fecha, (p.kilos_solicitados * p.oferta) AS ingreso 
-        FROM pujas p 
-        JOIN lotes l ON p.lote_id = l.id 
-        WHERE l.vendedor = '{vendedor}'
-    """
-    df_tendencia = pd.read_sql(query_tendencia, conn)
-    
-    if not df_tendencia.empty and "fecha" in df_tendencia.columns:
-        # Agrupar ingresos por fecha (días/meses) para ver la tendencia temporal real
-        df_agrupado = df_tendencia.groupby("fecha")["ingreso"].sum().reset_index()
-        df_agrupado.columns = ["Fecha", "Ingresos Totales ($)"]
-        df_agrupado = df_agrupado.sort_values("Fecha")
-        
-        st.markdown("#### 📈 Tendencia de Ingresos a lo largo del tiempo (Días / Meses)")
-        st.line_chart(df_agrupado.set_index("Fecha"))
-    else:
-        st.info("Aún no hay suficientes transacciones para graficar la tendencia temporal.")
-        
-    # Métricas generales
     cursor = conn.cursor()
-    cursor.execute("SELECT cantidad_kg, kilos_vendidos, precio_base FROM lotes WHERE vendedor = ?", (vendedor,))
-    lotes_resumen = cursor.fetchall()
-    if lotes_resumen:
-        df_res = pd.DataFrame(lotes_resumen, columns=["Total", "Vendidos", "Base"])
-        ingresos_totales = (df_res["Vendidos"] * df_res["Base"]).sum()
-        perdidas_evitadas = (df_res["Total"] * df_res["Base"]).sum()
+    cursor.execute("SELECT producto, cantidad_kg, kilos_vendidos FROM lotes WHERE vendedor = ?", (vendedor,))
+    lotes_grafica = cursor.fetchall()
+    
+    if lotes_grafica:
+        df_lotes = pd.DataFrame(lotes_grafica, columns=["Producto", "Cantidad Total (kg)", "Kilos Vendidos (kg)"])
+        df_lotes["Kilos Faltantes (kg)"] = df_lotes["Cantidad Total (kg)"] - df_lotes["Kilos Vendidos (kg)"]
         
-        col1, col2 = st.columns(2)
-        col1.metric("💰 Ingresos Totales Generados", f"${ingresos_totales:,.2f} USD")
-        col2.metric("🛡️ Pérdidas Totales Evitadas", f"${perdidas_evitadas:,.2f} USD")
-        
+        # Gráfica de barras solicitada
+        st.bar_chart(df_lotes.set_index("Producto")[["Kilos Vendidos (kg)", "Kilos Faltantes (kg)"]])
+    else:
+        st.info("Publica lotes para visualizar la gráfica de barras de inventario.")
+
     st.markdown("---")
-    st.subheader("📥 Buzón de Chat Personal Ilimitado con Compradores")
+    st.subheader("📈 Historial del Top 3 de Pujas por Lote")
+    cursor.execute("SELECT id, producto, cantidad_kg, precio_base FROM lotes WHERE vendedor = ?", (vendedor,))
+    mis_lotes = cursor.fetchall()
+    
+    if mis_lotes:
+        for ml in mis_lotes:
+            st.markdown(f"#### 📦 Lote #{ml[0]}: {ml[1]} ({ml[2]} kg) - Base: ${ml[3]} USD/kg")
+            query_pujas = f"SELECT comprador, oferta, kilos_solicitados, fecha FROM pujas WHERE lote_id = {ml[0]} ORDER BY oferta DESC LIMIT 3"
+            df_pujas = pd.read_sql(query_pujas, conn)
+            
+            if not df_pujas.empty:
+                df_pujas.index = range(1, len(df_pujas) + 1)
+                df_pujas.columns = ["Comprador", "Oferta ($/kg)", "Kilos Solicitados", "Fecha"]
+                st.dataframe(df_pujas, use_container_width=True)
+            else:
+                st.info("Aún no hay pujas en este lote.")
+            st.markdown("---")
+    else:
+        st.info("No tienes lotes publicados.")
+
+    st.subheader("📥 Buzón de Chat y Mensajes Directos con Compradores")
     cursor.execute("SELECT id, remitente, lote, mensaje, logistica, imagen, respuesta, fecha FROM mensajes WHERE vendedor = ? ORDER BY fecha DESC", (vendedor,))
     mensajes_recibidos = cursor.fetchall()
     
     if mensajes_recibidos:
         for m in mensajes_recibidos:
             msg_id, remitente, lote_nom, texto_msj, logis, img, resp_actual, fecha_m = m
-            img_info = f" | 🖼️ Imagen: {img}" if img else ""
             
-            st.markdown(f"📅 *{fecha_m}* | **Comprador:** {remitente} | **Lote:** *{lote_nom}*{img_info}")
+            st.markdown(f"📅 *{fecha_m}* | **Comprador:** {remitente} | **Lote:** *{lote_nom}*")
             st.info(f"💬 *\"{texto_msj}\"*\n\n🚚 *Logística:* {logis}")
+            if img:
+                st.warning(f"🖼️ **Imagen adjunta por el comprador:** {img}")
             
             if resp_actual:
                 st.success(f"✅ **Tu respuesta:** {resp_actual}")
             else:
                 with st.form(key=f"form_resp_vendedor_{msg_id}"):
-                    texto_respuesta = st.text_area("Responder al comprador:", key=f"txt_resp_{msg_id}")
-                    enviar_resp = st.form_submit_button("Enviar Respuesta al Chat")
+                    texto_respuesta = st.text_area("Escribe una respuesta para este comprador:")
+                    enviar_resp = st.form_submit_button("Enviar Respuesta")
                     if enviar_resp and texto_respuesta:
                         cursor.execute("UPDATE mensajes SET respuesta = ? WHERE id = ?", (texto_respuesta, msg_id))
                         conn.commit()
-                        st.success("📩 ¡Respuesta enviada con éxito al chat!")
+                        st.success("📩 ¡Respuesta enviada al chat!")
                         st.rerun()
             st.markdown("---")
     else:
