@@ -4,7 +4,7 @@ def inicializar_bd():
     conn = sqlite3.connect("mermax.db")
     cursor = conn.cursor()
     
-    # Tabla de Usuarios (Compradores y Vendedores con contraseña)
+    # Tabla de Usuarios (Compradores y Vendedores)
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS usuarios (
             nombre TEXT PRIMARY KEY,
@@ -13,20 +13,21 @@ def inicializar_bd():
         )
     """)
     
-    # Tabla de Lotes publicados por vendedores (con categorías)
+    # Tabla de Lotes (con cantidad total y kilos vendidos opcionales)
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS lotes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             producto TEXT,
             categoria TEXT,
             cantidad_kg REAL,
+            kilos_vendidos REAL DEFAULT 0,
             precio_base REAL,
             tiempo_limite TEXT,
             vendedor TEXT
         )
     """)
     
-    # Tabla de Pujas / Ofertas de los compradores
+    # Tabla de Pujas / Ofertas
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS pujas (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -37,7 +38,7 @@ def inicializar_bd():
         )
     """)
     
-    # Tabla de Mensajes directos (con soporte de imagen, logística y respuesta)
+    # Tabla de Mensajes con soporte para respuestas del vendedor
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS mensajes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
