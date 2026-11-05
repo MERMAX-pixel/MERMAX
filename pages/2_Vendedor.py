@@ -1,13 +1,14 @@
 import streamlit as st
 import sqlite3
 import pandas as pd
+import plotly.express as px
 from datetime import datetime
 from database import inicializar_bd
 
 inicializar_bd()
 
 st.set_page_config(page_title="Portal de Vendedores", layout="wide")
-st.title("📦 Panel de Vendedor - Control, Gráficas y Chat")
+st.title("📦 Panel Ejecutivo y Dashboard de Ingresos (Reporte Estilo Excel)")
 
 st.sidebar.header("🔐 Acceso Vendedor")
 modo_v = st.sidebar.radio("Acción:", ["Iniciar Sesión", "Registrarse"], key="auth_v")
@@ -60,23 +61,77 @@ if "vendedor_activo" in st.session_state and st.session_state.vendedor_activo:
     st.markdown("---")
     
     # ==========================================================
-    # GRÁFICA DE BARRAS: KILOS VENDIDOS VS KILOS FALTANTES
+    # DASHBOARD EJECUTIVO: GRÁFICA APILADA, PASTEL Y LÍNEAS
     # ==========================================================
-    st.subheader("📊 Gráfica de Control: Kilos Vendidos vs. Kilos Faltantes")
+    st.subheader("📊 Dashboard de Rendimiento y Reporte Financiero")
     conn = sqlite3.connect("mermax.db")
+    
     cursor = conn.cursor()
-    cursor.execute("SELECT producto, cantidad_kg, kilos_vendidos FROM lotes WHERE vendedor = ?", (vendedor,))
+    cursor.execute("SELECT producto, categoria, cantidad_kg, kilos_vendidos, precio_base FROM lotes WHERE vendedor = ?", (vendedor,))
     lotes_grafica = cursor.fetchall()
     
     if lotes_grafica:
-        df_lotes = pd.DataFrame(lotes_grafica, columns=["Producto", "Cantidad Total (kg)", "Kilos Vendidos (kg)"])
+        df_lotes = pd.DataFrame(lotes_grafica, columns=["Producto", "Categoría", "Cantidad Total (kg)", "Kilos Vendidos (kg)", "Precio Base"])
         df_lotes["Kilos Faltantes (kg)"] = df_lotes["Cantidad Total (kg)"] - df_lotes["Kilos Vendidos (kg)"]
+        df_lotes["Ingresos ($)"] = df_lotes["Kilos Vendidos (kg)"] * df_lotes["Precio Base"]
         
-        # Gráfica de barras solicitada
-        st.bar_chart(df_lotes.set_index("Producto")[["Kilos Vendidos (kg)", "Kilos Faltantes (kg)"]])
-    else:
-        st.info("Publica lotes para visualizar la gráfica de barras de inventario.")
+        # Fila 1: Gráfica de Barras Superpuestas (Apiladas) y Gráfica de Pastel
+        col_g1, col_g2 = st.columns(2)
+        
+        with col_g1:
+            st.markdown("#### 📊 Inventario: Vendido vs. Faltante (Superpuesto)")
+            # Preparamos el DataFrame en formato largo para Plotly con barras apiladas
+            df_melted = df_lotes.melt(id_vars=["Producto"], value_vars=["Kilos Vendidos (kg)", "Kilos Faltantes (kg)"], 
+                                      var_name="Estado", value_name="Kilos")
+            fig_bar = px.bar(df_melted, x="Producto", y="Kilos", color="Estado", barmode="stack",
+                             color_discrete_map={"Kilos Vendidos (kg)": "#2b5c8f", "Kilos Faltantes (kg)": "#d9822b"})
+            st.plotly_chart(fig_bar, use_container_width=True)
+            
+        with col_g2:
+            st.markdown("#### 🥧 Distribución de Ingresos por Categoría")
+            df_cat = df_lotes.groupby("Categoría")["Ingresos ($)"].sum().reset_index()
+            if not df_cat.empty and df_cat["Ingresos ($)"].sum() > 0:
+                fig_pie = px.pie(df_cat, names="Categoría", values="Ingresos ($)", hole=0.3)
+                st.plotly_chart(fig_pie, use_container_width=True)
+            else:
+                st.info("Aún no hay ingresos suficientes para mostrar la distribución en pastel.")
 
+        st.markdown("---")
+        
+        # Fila 2: Gráfica de Tendencia Temporal (Ingresos generados por fecha con puntos y líneas)
+        query_tendencia = f"""
+            SELECT l.fecha, (p.kilos_solicitados * p.oferta) AS ingreso 
+            FROM pujas p 
+            JOIN lotes l ON p.lote_id = l.id 
+            WHERE l.vendedor = '{vendedor}'
+        """
+        df_tendencia = pd.read_sql(query_tendencia, conn)
+        
+        if not df_tendencia.empty and "fecha" in df_tendencia.columns:
+            df_agrupado = df_tendencia.groupby("fecha")["ingreso"].sum().reset_index()
+            df_agrupado.columns = ["Fecha", "Ingresos Totales ($)"]
+            df_agrupado = df_agrupado.sort_values("Fecha")
+            
+            st.markdown("#### 📈 Tendencia de Ingresos a lo largo del tiempo (Días / Meses)")
+            fig_line = px.line(df_agrupado, x="Fecha", y="Ingresos Totales ($)", markers=True, 
+                               line_shape="linear", color_discrete_sequence=["#1f77b4"])
+            st.plotly_chart(fig_line, use_container_width=True)
+        else:
+            st.info("Registra pujas para visualizar la línea de tendencia temporal de ingresos.")
+            
+        # Métricas ejecutivas rápidas
+        total_kilos_cat = df_lotes["Cantidad Total (kg)"].sum()
+        total_vendidos = df_lotes["Kilos Vendidos (kg)"].sum()
+        ganancia_estimada = df_lotes["Ingresos ($)"].sum()
+        perdida_evitada = (df_lotes["Cantidad Total (kg)"] * df_lotes["Precio Base"]).sum()
+        
+        col1, col2, col3 = st.columns(3)
+        col1.metric("💰 Ingresos Totales", f"${ganancia_estimada:,.2f} USD")
+        col2.metric("🛡️ Pérdidas Evitadas", f"${perdida_evitada:,.2f} USD")
+        col3.metric("📦 Avance General", f"{(total_vendidos/total_kilos_cat)*100:.1f}%" if total_kilos_cat > 0 else "0%")
+    else:
+        st.info("Publica lotes de productos para visualizar las gráficas del dashboard ejecutivo.")
+        
     st.markdown("---")
     st.subheader("📈 Historial del Top 3 de Pujas por Lote")
     cursor.execute("SELECT id, producto, cantidad_kg, precio_base FROM lotes WHERE vendedor = ?", (vendedor,))
