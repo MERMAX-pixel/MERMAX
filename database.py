@@ -1,5 +1,4 @@
 import sqlite3
-from datetime import datetime
 
 def inicializar_bd():
     conn = sqlite3.connect("mermax.db")
@@ -39,7 +38,6 @@ def inicializar_bd():
         )
     """)
     
-    # Historial de chat ilimitado y estructurado
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS mensajes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
