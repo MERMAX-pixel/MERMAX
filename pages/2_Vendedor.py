@@ -72,7 +72,7 @@ if "vendedor_activo" in st.session_state and st.session_state.vendedor_activo:
         st.bar_chart(df_kilos)
         
         st.markdown("#### 📈 Tendencia de Ingresos por Lote")
-        df_ingresos = df_lotes.set_index("Producto"]["Ingresos Estimados ($)"]
+        df_ingresos = df_lotes.set_index("Producto")["Ingresos Estimados ($)"]
         st.line_chart(df_ingresos)
         
         total_kilos_cat = df_lotes["Cantidad Total (kg)"].sum()
