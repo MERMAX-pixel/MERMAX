@@ -36,7 +36,6 @@ if "vendedor_activo" in st.session_state and st.session_state.vendedor_activo:
     vendedor = st.session_state.vendedor_activo
     st.success(f"Sesión activa como Vendedor: **{vendedor}**")
     
-    # Formulario para publicar nuevo lote
     with st.form("form_lote"):
         st.markdown("### ➕ Publicar Nuevo Lote de Mermas")
         prod = st.text_input("Nombre del Producto:")
@@ -57,11 +56,7 @@ if "vendedor_activo" in st.session_state and st.session_state.vendedor_activo:
             st.success("¡Lote publicado correctamente en la plataforma!")
 
     st.markdown("---")
-    
-    # ==========================================
-    # DASHBOARD EJECUTIVO Y GRÁFICAS ESTILO EXCEL
-    # ==========================================
-    st.subheader("📊 Dashboard de Rendimiento e Impacto (Estilo Ejecutivo)")
+    st.subheader("📊 Dashboard de Rendimiento e Impacto")
     conn = sqlite3.connect("mermax.db")
     cursor = conn.cursor()
     cursor.execute("SELECT producto, categoria, cantidad_kg, kilos_vendidos, precio_base FROM lotes WHERE vendedor = ?", (vendedor,))
@@ -72,12 +67,10 @@ if "vendedor_activo" in st.session_state and st.session_state.vendedor_activo:
         df_lotes["Kilos Faltantes (kg)"] = df_lotes["Cantidad Total (kg)"] - df_lotes["Kilos Vendidos (kg)"]
         df_lotes["Ingresos Estimados ($)"] = df_lotes["Kilos Vendidos (kg)"] * df_lotes["Precio Base"]
         
-        # Gráfica de barras de unidades / kilos comercializados
         st.markdown("#### 📊 Unidades y Kilos Comercializados por Producto")
         df_kilos = df_lotes.set_index("Producto")[["Kilos Vendidos (kg)", "Kilos Faltantes (kg)"]]
         st.bar_chart(df_kilos)
         
-        # Gráfica de líneas de tendencia de ingresos
         st.markdown("#### 📈 Tendencia de Ingresos por Lote")
         df_ingresos = df_lotes.set_index("Producto"]["Ingresos Estimados ($)"]
         st.line_chart(df_ingresos)
