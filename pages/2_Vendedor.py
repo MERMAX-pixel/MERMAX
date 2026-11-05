@@ -3,9 +3,9 @@ import sqlite3
 import pandas as pd
 
 st.set_page_config(page_title="Portal de Vendedores", layout="wide")
-st.title("Panel de Control de Vendedores")
+st.title("📦 Panel de Control y Métricas del Vendedor")
 
-st.sidebar.header("Acceso Vendedor")
+st.sidebar.header("🔐 Acceso Vendedor")
 modo_v = st.sidebar.radio("Acción:", ["Iniciar Sesión", "Registrarse"], key="auth_v")
 user_v = st.sidebar.text_input("Empresa Vendedora:", key="uv")
 pwd_v = st.sidebar.text_input("Contraseña:", type="password", key="pv")
@@ -35,36 +35,66 @@ if "vendedor_activo" in st.session_state and st.session_state.vendedor_activo:
     
     # Formulario para publicar nuevo lote
     with st.form("form_lote"):
-        st.markdown("### Publicar Nuevo Lote")
+        st.markdown("### ➕ Publicar Nuevo Lote")
         prod = st.text_input("Nombre del Producto:")
         cat = st.selectbox("Categoría:", ["Frutas y Verduras", "Lácteos", "Panadería", "Carnes y Embutidos", "Otros"])
-        cant = st.number_input("Cantidad (kg):", min_value=1.0, value=100.0)
-        base = st.number_input("Precio Base ($):", min_value=0.5, value=5.0)
+        cant = st.number_input("Cantidad total (kg):", min_value=1.0, value=100.0)
+        base = st.number_input("Precio Base de rescate ($):", min_value=0.5, value=5.0)
         tiempo = st.text_input("Vigencia / Urgencia:", value="2 horas restantes (Urgente)")
         
         if st.form_submit_button("Publicar en el Mercado"):
             conn = sqlite3.connect("mermax.db")
             cursor = conn.cursor()
             cursor.execute("""
-                INSERT INTO lotes (producto, categoria, cantidad_kg, precio_base, tiempo_limite, vendedor)
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT INTO lotes (producto, categoria, cantidad_kg, kilos_vendidos, precio_base, tiempo_limite, vendedor)
+                VALUES (?, ?, ?, 0, ?, ?, ?)
             """, (prod, cat, cant, base, tiempo, vendedor))
             conn.commit()
             conn.close()
             st.success("¡Lote publicado correctamente!")
 
     st.markdown("---")
-    st.subheader("Historial de Pujas en tus Lotes")
-    conn = sqlite3.connect("mermax.db")
     
-    # Obtener lotes de este vendedor
+    # ==========================================
+    # APARTADO DE GRÁFICAS Y MÉTRICAS FINANCIERAS
+    # ==========================================
+    st.subheader("📊 Gráficas y Métricas de Rendimiento")
+    conn = sqlite3.connect("mermax.db")
     cursor = conn.cursor()
+    cursor.execute("SELECT producto, cantidad_kg, kilos_vendidos, precio_base FROM lotes WHERE vendedor = ?", (vendedor,))
+    datos_grafica = cursor.fetchall()
+    
+    if datos_grafica:
+        df_lotes = pd.DataFrame(datos_grafica, columns=["Producto", "Cantidad Total (kg)", "Kilos Vendidos (kg)", "Precio Base"])
+        df_lotes["Kilos Faltantes (kg)"] = df_lotes["Cantidad Total (kg)"] - df_lotes["Kilos Vendidos (kg)"]
+        
+        # Gráfica 1: Kilos Vendidos vs Faltantes
+        st.markdown("#### ⚖️ Comparativa de Kilos: Vendidos vs. Faltantes")
+        df_kilos = df_lotes.set_index("Producto")[["Kilos Vendidos (kg)", "Kilos Faltantes (kg)"]]
+        st.bar_chart(df_kilos)
+        
+        # Métricas de ganancias y pérdidas evitadas
+        total_kilos_cat = df_lotes["Cantidad Total (kg)"].sum()
+        total_vendidos = df_lotes["Kilos Vendidos (kg)"].sum()
+        ganancia_estimada = (df_lotes["Kilos Vendidos (kg)"] * df_lotes["Precio Base"]).sum()
+        perdida_evitada = (df_lotes["Cantidad Total (kg)"] * df_lotes["Precio Base"]).sum()
+        
+        col1, col2, col3 = st.columns(3)
+        col1.metric("💰 Ganancias por Rescate", f"${ganancia_estimada:,.2f} USD")
+        col2.metric("🛡️ Pérdidas Totales Evitadas", f"${perdida_evitada:,.2f} USD")
+        col3.metric("📦 Volumen Total Gestionado", f"{total_kilos_cat:,.1f} kg")
+    else:
+        st.info("Publica lotes para visualizar las gráficas y métricas financieras.")
+        
+    st.markdown("---")
+    st.subheader("📈 Historial de Pujas en tus Lotes")
+    
     cursor.execute("SELECT id, producto, cantidad_kg, precio_base FROM lotes WHERE vendedor = ?", (vendedor,))
     mis_lotes = cursor.fetchall()
     
     if mis_lotes:
         for ml in mis_lotes:
-            st.markdown(f"#### Lote #{ml[0]}: {ml[1]} ({ml[2]} kg) - Base: ${ml[3]} USD")
+            st.markdown(f"#### 📦 Lote #{ml[0]}: {ml[1]} ({ml[2]} kg) - Base: ${ml[3]} USD")
             query_pujas = f"SELECT comprador, oferta FROM pujas WHERE lote_id = {ml[0]} ORDER BY oferta DESC"
             df_pujas = pd.read_sql(query_pujas, conn)
             
@@ -78,7 +108,7 @@ if "vendedor_activo" in st.session_state and st.session_state.vendedor_activo:
     else:
         st.info("No tienes lotes publicados todavía.")
 
-    st.subheader("Buzón de Mensajes Directos y Respuestas")
+    st.subheader("📥 Buzón de Mensajes Directos y Respuestas")
     cursor.execute("SELECT id, remitente, lote, mensaje, logistica, imagen, respuesta FROM mensajes WHERE vendedor = ?", (vendedor,))
     mensajes_recibidos = cursor.fetchall()
     
@@ -88,7 +118,7 @@ if "vendedor_activo" in st.session_state and st.session_state.vendedor_activo:
             img_info = f" | 🖼️ Imagen: {img}" if img else ""
             
             st.markdown(f"**De:** {remitente} | **Lote:** *{lote_nom}*{img_info}")
-            st.info(f"💬 *\"{texto_msj}\"*\n\n*Logística:* {logis}")
+            st.info(f"💬 *\"{texto_msj}\"*\n\n🚚 *Logística:* {logis}")
             
             if resp_actual:
                 st.success(f"✅ **Tu respuesta enviada:** {resp_actual}")
@@ -99,7 +129,7 @@ if "vendedor_activo" in st.session_state and st.session_state.vendedor_activo:
                     if enviar_resp:
                         cursor.execute("UPDATE mensajes SET respuesta = ? WHERE id = ?", (texto_respuesta, msg_id))
                         conn.commit()
-                        st.success("📩 ¡Respuesta enviada con éxito!")
+                        st.success("📩 ¡Respuesta enviada con éxito al comprador!")
                         st.rerun()
             st.markdown("---")
     else:
